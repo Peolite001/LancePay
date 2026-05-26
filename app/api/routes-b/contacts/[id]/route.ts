@@ -9,6 +9,9 @@ import {
   supportsContactSoftDelete,
 } from '../../_lib/contacts'
 
+/**
+ * AUTH HELPER
+ */
 async function getAuthenticatedUser(request: NextRequest) {
   const authToken = request.headers
     .get('authorization')
@@ -24,19 +27,23 @@ async function getAuthenticatedUser(request: NextRequest) {
   })
 }
 
+/**
+ * GET CONTACT
+ */
 async function GETHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   let contactId: string | undefined
 
   try {
     const user = await getAuthenticatedUser(request)
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id } = params
     contactId = id
 
     const includeDeleted =
@@ -58,6 +65,7 @@ async function GETHandler(
     return NextResponse.json({ contact }, { status: 200 })
   } catch (error) {
     logger.error({ err: error, contactId }, 'Routes B contact GET error')
+
     return NextResponse.json(
       { error: 'Failed to fetch contact' },
       { status: 500 }
@@ -65,19 +73,23 @@ async function GETHandler(
   }
 }
 
+/**
+ * PATCH CONTACT
+ */
 async function PATCHHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   let contactId: string | undefined
 
   try {
     const user = await getAuthenticatedUser(request)
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id } = params
     contactId = id
 
     const contact = await findContactById({
@@ -94,6 +106,7 @@ async function PATCHHandler(
     }
 
     let body: any
+
     try {
       body = await request.json()
     } catch {
@@ -112,6 +125,7 @@ async function PATCHHandler(
           { status: 400 }
         )
       }
+
       updateData.name = body.name.trim()
     }
 
@@ -128,7 +142,10 @@ async function PATCHHandler(
 
       const existing = await prisma.contact.findUnique({
         where: {
-          userId_email: { userId: user.id, email },
+          userId_email: {
+            userId: user.id,
+            email,
+          },
         },
         select: { id: true },
       })
@@ -143,15 +160,83 @@ async function PATCHHandler(
       updateData.email = email
     }
 
-    const updatedContact = await prisma.contact.update({
-      where: { id },
-      data: updateData,
-      select: { id: true, name: true, email: true, updatedAt: true },
-    })
+    if (body.company !== undefined) {
+      if (body.company !== null && typeof body.company !== 'string') {
+        return NextResponse.json(
+          { error: 'company must be a string' },
+          { status: 400 }
+        )
+      }
 
-    return NextResponse.json({ contact: updatedContact }, { status: 200 })
+      if (
+        typeof body.company === 'string' &&
+        body.company.trim().length > 100
+      ) {
+        return NextResponse.json(
+          { error: 'company must be 100 characters or fewer' },
+          { status: 400 }
+        )
+      }
+
+      updateData.company =
+        typeof body.company === 'string'
+          ? body.company.trim()
+          : null
+    }
+
+    if (body.notes !== undefined) {
+      if (body.notes !== null && typeof body.notes !== 'string') {
+        return NextResponse.json(
+          { error: 'notes must be a string' },
+          { status: 400 }
+        )
+      }
+
+      if (
+        typeof body.notes === 'string' &&
+        body.notes.trim().length > 500
+      ) {
+        return NextResponse.json(
+          { error: 'notes must be 500 characters or fewer' },
+          { status: 400 }
+        )
+      }
+
+      updateData.notes =
+        typeof body.notes === 'string'
+          ? body.notes.trim()
+          : null
+    }
+
+    const updatedContact =
+      Object.keys(updateData).length === 0
+        ? await prisma.contact.findUnique({
+            where: { id },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              updatedAt: true,
+            },
+          })
+        : await prisma.contact.update({
+            where: { id },
+            data: updateData,
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              updatedAt: true,
+            },
+          })
+
+    return NextResponse.json(
+      { contact: updatedContact },
+      { status: 200 }
+    )
   } catch (error) {
     logger.error({ err: error, contactId }, 'Routes B contact PATCH error')
+
     return NextResponse.json(
       { error: 'Failed to update contact' },
       { status: 500 }
@@ -159,19 +244,23 @@ async function PATCHHandler(
   }
 }
 
+/**
+ * DELETE CONTACT
+ */
 async function DELETEHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   let contactId: string | undefined
 
   try {
     const user = await getAuthenticatedUser(request)
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id } = params
     contactId = id
 
     const supported = await supportsContactSoftDelete()
@@ -198,6 +287,7 @@ async function DELETEHandler(
     return NextResponse.json({ contact: deleted }, { status: 200 })
   } catch (error) {
     logger.error({ err: error, contactId }, 'Routes B contact DELETE error')
+
     return NextResponse.json(
       { error: 'Failed to delete contact' },
       { status: 500 }
@@ -205,6 +295,9 @@ async function DELETEHandler(
   }
 }
 
+/**
+ * EXPORT ROUTES
+ */
 export const GET = withRequestId(GETHandler)
 export const PATCH = withRequestId(PATCHHandler)
 export const DELETE = withRequestId(DELETEHandler)

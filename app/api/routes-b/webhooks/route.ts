@@ -1,7 +1,10 @@
 import crypto from 'node:crypto'
+
 import { withRequestId } from '../_lib/with-request-id'
 import { withBodyLimit } from '../_lib/with-body-limit'
+
 import { NextRequest, NextResponse } from 'next/server'
+
 import { prisma } from '@/lib/db'
 import { verifyAuthToken } from '@/lib/auth'
 import { logger } from '@/lib/logger'
@@ -30,13 +33,18 @@ import {
 
 import { z } from 'zod'
 
+const MAX_WEBHOOKS_PER_USER = 10
+const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000
+
 /* ---------------- OPENAPI ---------------- */
 
 registerRoute({
   method: 'GET',
   path: '/webhooks',
   summary: 'List webhooks',
-  description: 'Get all webhooks for the authenticated user.',
+  description:
+    'Get all webhooks for the authenticated user.',
+
   responseSchema: z.object({
     webhooks: z.array(
       z.object({
@@ -47,10 +55,14 @@ registerRoute({
         subscribedEvents: z.array(z.string()),
         lastTriggeredAt: z.string().nullable(),
         secretFingerprint: z.string(),
+        headers: z
+          .record(z.string(), z.string())
+          .optional(),
         createdAt: z.string(),
       })
     ),
   }),
+
   tags: ['webhooks'],
 })
 
@@ -58,26 +70,37 @@ registerRoute({
   method: 'POST',
   path: '/webhooks',
   summary: 'Create webhook',
-  description: 'Create webhook with idempotency + custom headers.',
+  description:
+    'Create webhook with idempotency + custom headers.',
+
   requestSchema: z.object({
     targetUrl: z.string().url(),
     description: z.string().max(100).optional(),
     eventTypes: z.array(z.string()).optional(),
-    headers: z.record(z.string(), z.string()).optional(),
+    headers: z
+      .record(z.string(), z.string())
+      .optional(),
   }),
+
   responseSchema: z.object({
     id: z.string(),
     targetUrl: z.string(),
     description: z.string().nullable(),
     signingSecret: z.string(),
+    headers: z
+      .record(z.string(), z.string())
+      .optional(),
     createdAt: z.string(),
   }),
+
   tags: ['webhooks'],
 })
 
 /* ---------------- AUTH ---------------- */
 
-async function getAuthenticatedUser(request: NextRequest) {
+async function getAuthenticatedUser(
+  request: NextRequest
+) {
   const authToken = request.headers
     .get('authorization')
     ?.replace('Bearer ', '')
@@ -85,11 +108,17 @@ async function getAuthenticatedUser(request: NextRequest) {
   if (!authToken) return null
 
   const claims = await verifyAuthToken(authToken)
+
   if (!claims) return null
 
   return prisma.user.findUnique({
-    where: { privyId: claims.userId },
-    select: { id: true },
+    where: {
+      privyId: claims.userId,
+    },
+
+    select: {
+      id: true,
+    },
   })
 }
 
@@ -107,36 +136,59 @@ function isValidHttpsUrl(url: string) {
 
 async function GETHandler(request: NextRequest) {
   try {
-    const user = await getAuthenticatedUser(request)
+    const user =
+      await getAuthenticatedUser(request)
+
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    const webhooks = await prisma.userWebhook.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        targetUrl: true,
-        description: true,
-        isActive: true,
-        subscribedEvents: true,
-        lastTriggeredAt: true,
-        signingSecret: true,
-        createdAt: true,
-      },
-    })
+    const webhooks =
+      await prisma.userWebhook.findMany({
+        where: {
+          userId: user.id,
+        },
+
+        orderBy: {
+          createdAt: 'desc',
+        },
+
+        select: {
+          id: true,
+          targetUrl: true,
+          description: true,
+          isActive: true,
+          subscribedEvents: true,
+          lastTriggeredAt: true,
+          signingSecret: true,
+          createdAt: true,
+        },
+      })
 
     const result = webhooks.map((w) => ({
       ...w,
-      secretFingerprint: generateSecretFingerprint(w.signingSecret),
+      secretFingerprint:
+        generateSecretFingerprint(
+          w.signingSecret
+        ),
+
       signingSecret: undefined,
+
       headers: getCustomHeaders(w.id),
     }))
 
-    return NextResponse.json({ webhooks: result })
+    return NextResponse.json({
+      webhooks: result,
+    })
   } catch (error) {
-    logger.error({ err: error }, 'webhooks GET error')
+    logger.error(
+      { err: error },
+      'webhooks GET error'
+    )
+
     return NextResponse.json(
       { error: 'Failed to get webhooks' },
       { status: 500 }
@@ -148,12 +200,18 @@ async function GETHandler(request: NextRequest) {
 
 async function POSTHandler(request: NextRequest) {
   try {
-    const user = await getAuthenticatedUser(request)
+    const user =
+      await getAuthenticatedUser(request)
+
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
     const body = await request.json()
+
     const idempotencyKey =
       request.headers.get('idempotency-key')
 
@@ -162,8 +220,11 @@ async function POSTHandler(request: NextRequest) {
       .update(JSON.stringify(body))
       .digest('hex')
 
+    /* ---- idempotency ---- */
+
     if (idempotencyKey) {
-      const cached = getIdempotentResponse(idempotencyKey)
+      const cached =
+        getIdempotentResponse(idempotencyKey)
 
       if (cached) {
         if (cached.bodyHash !== bodyHash) {
@@ -173,54 +234,125 @@ async function POSTHandler(request: NextRequest) {
           )
         }
 
-        return NextResponse.json(cached.body, {
-          status: cached.status,
-        })
+        return NextResponse.json(
+          cached.body,
+          {
+            status: cached.status,
+          }
+        )
       }
     }
 
+    /* ---- validation ---- */
+
     if (
       !body.targetUrl ||
-      !isValidHttpsUrl(body.targetUrl) ||
-      body.targetUrl.length > 512
+      typeof body.targetUrl !== 'string'
     ) {
       return NextResponse.json(
-        { error: 'Invalid targetUrl' },
+        { error: 'targetUrl is required' },
         { status: 400 }
       )
     }
 
-    const eventTypes = body.eventTypes
-      ? validateEventTypes(body.eventTypes)
-      : getDefaultEventTypes()
+    if (
+      body.targetUrl.length > 512 ||
+      !isValidHttpsUrl(body.targetUrl)
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid HTTPS targetUrl' },
+        { status: 400 }
+      )
+    }
 
-    const headersResult = validateCustomHeaders(body.headers)
+    if (
+      body.description &&
+      (typeof body.description !==
+        'string' ||
+        body.description.length > 100)
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid description' },
+        { status: 400 }
+      )
+    }
+
+    /* ---- event types ---- */
+
+    let eventTypes: string[]
+
+    try {
+      eventTypes = body.eventTypes
+        ? validateEventTypes(
+            body.eventTypes
+          )
+        : getDefaultEventTypes()
+    } catch (e) {
+      return NextResponse.json(
+        {
+          error:
+            e instanceof Error
+              ? e.message
+              : 'Invalid eventTypes',
+        },
+        { status: 400 }
+      )
+    }
+
+    const headersResult =
+      validateCustomHeaders(body.headers)
+
     if (!headersResult.ok) {
       return NextResponse.json(
-        { error: headersResult.error },
+        {
+          error: headersResult.error,
+        },
         { status: 400 }
+      )
+    }
+
+    /* ---- limit ---- */
+
+    const count =
+      await prisma.userWebhook.count({
+        where: {
+          userId: user.id,
+        },
+      })
+
+    if (count >= MAX_WEBHOOKS_PER_USER) {
+      return NextResponse.json(
+        { error: 'Webhook limit reached' },
+        { status: 429 }
       )
     }
 
     const signingSecret =
-      body.signingSecret?.trim() || generateWebhookSecret()
+      body.signingSecret?.trim() ||
+      generateWebhookSecret()
 
-    const webhook = await prisma.userWebhook.create({
-      data: {
-        userId: user.id,
-        targetUrl: body.targetUrl,
-        description: body.description ?? null,
-        signingSecret,
-        subscribedEvents: eventTypes,
-      },
-    })
+    const webhook =
+      await prisma.userWebhook.create({
+        data: {
+          userId: user.id,
+          targetUrl: body.targetUrl,
+          description:
+            body.description ?? null,
+          signingSecret,
+          subscribedEvents: eventTypes,
+        },
+      })
 
-    setCustomHeaders(webhook.id, headersResult.headers)
+    setCustomHeaders(
+      webhook.id,
+      headersResult.headers
+    )
 
     const responseBody = {
       id: webhook.id,
       targetUrl: webhook.targetUrl,
-      description: webhook.description ?? null,
+      description:
+        webhook.description ?? null,
       signingSecret,
       headers: headersResult.headers,
       createdAt: webhook.createdAt,
@@ -234,13 +366,20 @@ async function POSTHandler(request: NextRequest) {
           status: 201,
           body: responseBody,
         },
-        24 * 60 * 60 * 1000
+        IDEMPOTENCY_TTL_MS
       )
     }
 
-    return NextResponse.json(responseBody, { status: 201 })
+    return NextResponse.json(
+      responseBody,
+      { status: 201 }
+    )
   } catch (error) {
-    logger.error({ err: error }, 'webhooks POST error')
+    logger.error(
+      { err: error },
+      'webhooks POST error'
+    )
+
     return NextResponse.json(
       { error: 'Failed to create webhook' },
       { status: 500 }

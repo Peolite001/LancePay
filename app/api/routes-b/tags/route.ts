@@ -13,7 +13,8 @@ registerRoute({
   method: 'GET',
   path: '/tags',
   summary: 'List tags',
-  description: 'Get all tags with invoice counts.',
+  description:
+    'Get all tags for the authenticated user with invoice counts.',
   responseSchema: z.object({
     tags: z.array(
       z.object({
@@ -51,16 +52,23 @@ registerRoute({
 
 /* ---------------- AUTH ---------------- */
 
-async function getAuthenticatedUser(request: NextRequest) {
+async function getAuthenticatedUser(
+  request: NextRequest
+) {
   const authToken = request.headers
     .get('authorization')
     ?.replace('Bearer ', '')
 
-  const claims = await verifyAuthToken(authToken || '')
+  const claims = await verifyAuthToken(
+    authToken || ''
+  )
+
   if (!claims) return null
 
   return prisma.user.findUnique({
-    where: { privyId: claims.userId },
+    where: {
+      privyId: claims.userId,
+    },
   })
 }
 
@@ -70,14 +78,27 @@ async function GETHandler(request: NextRequest) {
   const user = await getAuthenticatedUser(request)
 
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
   }
 
   const tags = await prisma.tag.findMany({
-    where: { userId: user.id },
-    orderBy: { name: 'asc' },
+    where: {
+      userId: user.id,
+    },
+
+    orderBy: {
+      name: 'asc',
+    },
+
     include: {
-      _count: { select: { invoiceTags: true } },
+      _count: {
+        select: {
+          invoiceTags: true,
+        },
+      },
     },
   })
 
@@ -98,10 +119,16 @@ async function POSTHandler(request: NextRequest) {
   const user = await getAuthenticatedUser(request)
 
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
   }
 
-  let body: { name?: unknown; color?: unknown }
+  let body: {
+    name?: unknown
+    color?: unknown
+  }
 
   try {
     body = await request.json()
@@ -112,9 +139,15 @@ async function POSTHandler(request: NextRequest) {
     )
   }
 
-  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  const name =
+    typeof body.name === 'string'
+      ? body.name.trim()
+      : ''
+
   const color =
-    typeof body.color === 'string' ? body.color : '#6366f1'
+    typeof body.color === 'string'
+      ? body.color
+      : '#6366f1'
 
   if (!name) {
     return NextResponse.json(
@@ -125,7 +158,10 @@ async function POSTHandler(request: NextRequest) {
 
   if (name.length > 50) {
     return NextResponse.json(
-      { error: 'Tag name must be at most 50 characters' },
+      {
+        error:
+          'Tag name must be at most 50 characters',
+      },
       { status: 400 }
     )
   }
@@ -139,7 +175,10 @@ async function POSTHandler(request: NextRequest) {
 
   const existing = await prisma.tag.findUnique({
     where: {
-      userId_name: { userId: user.id, name },
+      userId_name: {
+        userId: user.id,
+        name,
+      },
     },
   })
 
@@ -156,6 +195,14 @@ async function POSTHandler(request: NextRequest) {
       name,
       color,
     },
+
+    include: {
+      _count: {
+        select: {
+          invoiceTags: true,
+        },
+      },
+    },
   })
 
   return NextResponse.json(
@@ -163,7 +210,7 @@ async function POSTHandler(request: NextRequest) {
       id: tag.id,
       name: tag.name,
       color: tag.color,
-      invoiceCount: 0,
+      invoiceCount: tag._count.invoiceTags,
     },
     { status: 201 }
   )
