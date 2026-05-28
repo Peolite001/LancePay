@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireScope, RoutesBForbiddenError } from '../_lib/authz'
 import { registerRoute } from '../_lib/openapi'
-import { getCacheValue, setCacheValue } from '../_lib/cache'
+import {
+  ensureStatsCacheInvalidationHooks,
+  getCachedStats,
+  setCachedStats,
+} from '../_lib/stats-cache'
 import { withCompression } from '../_lib/with-compression'
 import { errorResponse } from '../_lib/errors'
 import { z } from 'zod'
@@ -29,25 +33,26 @@ registerRoute({
   tags: ['stats'],
 })
 
+type StatsPayload = {
+  invoices: {
+    total: number
+    pending: number
+    paid: number
+    cancelled: number
+    overdue: number
+  }
+  totalEarned: number
+  pendingWithdrawals: number
+}
+
 async function GETHandler(request: NextRequest) {
   const requestId = request.headers.get('x-request-id')
 
   try {
+    ensureStatsCacheInvalidationHooks()
     const auth = await requireScope(request, 'routes-b:read')
 
-    const cacheKey = `routes-b:stats:${auth.userId}`
-
-    const cached = getCacheValue<{
-      invoices: {
-        total: number
-        pending: number
-        paid: number
-        cancelled: number
-        overdue: number
-      }
-      totalEarned: number
-      pendingWithdrawals: number
-    }>(cacheKey)
+    const cached = getCachedStats<StatsPayload>(auth.userId)
 
     if (cached) {
       return withCompression(
@@ -107,7 +112,7 @@ async function GETHandler(request: NextRequest) {
       pendingWithdrawals,
     }
 
-    setCacheValue(cacheKey, payload, 60_000)
+    setCachedStats(auth.userId, payload)
 
     return withCompression(
       request,
