@@ -3,8 +3,10 @@ import { withBodyLimit } from '../_lib/with-body-limit'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyAuthToken } from '@/lib/auth'
-import { logger } from '@/lib/logger'
+import { createRouteLogger } from '../_shared/logger'
 import { registerRoute } from '../_lib/openapi'
+
+const log = createRouteLogger({ route: '/api/routes-b/branding' })
 import { hasTableColumn } from '../_lib/table-columns'
 import { brandingSchema, type BrandingPayload } from './schema'
 import { errorResponse } from '../_lib/errors'
@@ -182,7 +184,7 @@ async function writeBranding(request: NextRequest) {
       },
     })
   } catch (error) {
-    logger.error({ err: error }, 'branding update error')
+    log.error({ err: error }, 'branding update error')
     return errorResponse('INTERNAL', 'Failed to update branding settings', {}, 500)
   }
 }
