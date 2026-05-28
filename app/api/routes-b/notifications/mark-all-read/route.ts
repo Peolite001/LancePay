@@ -1,31 +1,35 @@
+import { withRequestId } from '../../_lib/with-request-id'
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAuthToken } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { RouteRateLimiter, buildRateLimitResponse } from '@/lib/rate-limit'
+import { verifyAuthToken } from '@/lib/auth'
+import { checkRateLimit } from '../../_lib/rate-limit'
+import { bustUnreadCountCache } from '../../_lib/notification-cache'
 
-const markAllReadLimiter = new RouteRateLimiter({
-  id: 'notifications-mark-all-read',
-  maxRequests: 10,
-  windowMs: 60_000, // 10 per minute per user
-})
-
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const authToken = request.headers.get('authorization')?.replace('Bearer ', '')
   const claims = await verifyAuthToken(authToken || '')
   if (!claims) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const rl = markAllReadLimiter.check(claims.userId)
-  if (!rl.allowed) {
-    return buildRateLimitResponse(rl)
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { privyId: claims.userId },
-  })
+  const user = await prisma.user.findUnique({ where: { privyId: claims.userId } })
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  }
+
+  const rateLimit = checkRateLimit(`notifications:mark-all-read:${user.id}`, {
+    limit: 5,
+    windowMs: 60_000,
+  })
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(rateLimit.retryAfter) },
+      },
+    )
   }
 
   const result = await prisma.notification.updateMany({
@@ -33,14 +37,9 @@ export async function POST(request: NextRequest) {
     data: { isRead: true },
   })
 
-  return NextResponse.json(
-    { success: true, updatedCount: result.count },
-    {
-      headers: {
-        'X-RateLimit-Limit': rl.limit.toString(),
-        'X-RateLimit-Remaining': rl.remaining.toString(),
-        'X-RateLimit-Reset': rl.resetAt.toString(),
-      },
-    },
-  )
+  bustUnreadCountCache(user.id)
+
+  return NextResponse.json({ updated: result.count })
 }
+
+export const POST = withRequestId(POSTHandler)

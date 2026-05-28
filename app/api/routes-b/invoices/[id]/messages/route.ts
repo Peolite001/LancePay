@@ -1,3 +1,4 @@
+import { withRequestId } from '../../../_lib/with-request-id'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyAuthToken } from '@/lib/auth'
@@ -15,7 +16,45 @@ async function getAuthenticatedUser(request: NextRequest) {
   })
 }
 
-export async function POST(
+async function GETHandler(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id: invoiceId } = await params
+  const user = await getAuthenticatedUser(request)
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    select: { id: true, userId: true },
+  })
+
+  if (!invoice) {
+    return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+  }
+
+  if (invoice.userId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const messages = await prisma.invoiceMessage.findMany({
+    where: { invoiceId },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      senderType: true,
+      senderName: true,
+      content: true,
+      createdAt: true,
+    },
+  })
+
+  return NextResponse.json({ messages })
+}
+
+async function POSTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -74,3 +113,6 @@ export async function POST(
 
   return NextResponse.json(message, { status: 201 })
 }
+
+export const GET = withRequestId(GETHandler)
+export const POST = withRequestId(POSTHandler)

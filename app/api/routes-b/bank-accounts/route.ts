@@ -1,13 +1,18 @@
+import { withRequestId } from '../_lib/with-request-id'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyAuthToken } from '@/lib/auth'
+import { validateIBAN } from '../_lib/iban'
+import { validateSWIFT } from '../_lib/swift'
+import { bankAccountDisplayName } from '../_lib/bank-accounts'
 
 function isValidDigits(value: string, min: number, max: number) {
   const pattern = new RegExp(`^\\d{${min},${max}}$`)
   return pattern.test(value)
 }
 
-export async function GET(request: NextRequest) {
+/** Lists the authenticated user's saved bank accounts (default account first). */
+async function GETHandler(request: NextRequest) {
   const authToken = request.headers.get('authorization')?.replace('Bearer ', '')
   const claims = await verifyAuthToken(authToken || '')
   if (!claims) {
@@ -29,14 +34,20 @@ export async function GET(request: NextRequest) {
       accountNumber: true,
       accountName: true,
       isDefault: true,
+      nickname: true,
       createdAt: true,
     },
   })
 
-  return NextResponse.json({ bankAccounts })
+  return NextResponse.json({
+    bankAccounts: bankAccounts.map(a => ({
+      ...a,
+      displayName: bankAccountDisplayName(a),
+    })),
+  })
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const authToken = request.headers.get('authorization')?.replace('Bearer ', '')
   const claims = await verifyAuthToken(authToken || '')
   if (!claims) {
@@ -49,7 +60,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { bankName, bankCode, accountNumber, accountName } = body ?? {}
+  const { bankName, bankCode, accountNumber, accountName, iban, swift, nickname } = body ?? {}
 
   if (
     typeof bankName !== 'string' ||
@@ -72,8 +83,38 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  if (iban !== undefined && (typeof iban !== 'string' || !validateIBAN(iban))) {
+    return NextResponse.json({ error: 'Invalid IBAN format' }, { status: 400 })
+  }
+
+  if (swift !== undefined && (typeof swift !== 'string' || !validateSWIFT(swift))) {
+    return NextResponse.json({ error: 'Invalid SWIFT/BIC format' }, { status: 400 })
+  }
+
+  if (nickname !== undefined && nickname !== '' && (typeof nickname !== 'string' || nickname.trim().length > 32)) {
+    return NextResponse.json({ error: 'nickname must be a string of at most 32 characters' }, { status: 400 })
+  }
+
+  const existing = await prisma.bankAccount.findFirst({
+    where: {
+      userId: user.id,
+      accountNumber: { equals: accountNumber, mode: 'insensitive' },
+      bankCode: { equals: bankCode, mode: 'insensitive' },
+    },
+  })
+
+  if (existing) {
+    return NextResponse.json(
+      { error: 'Bank account already exists', existingId: existing.id },
+      { status: 409 },
+    )
+  }
+
   const existingCount = await prisma.bankAccount.count({ where: { userId: user.id } })
   const isDefault = existingCount === 0
+
+  const resolvedNickname =
+    typeof nickname === 'string' && nickname.trim() !== '' ? nickname.trim() : null
 
   const bankAccount = await prisma.bankAccount.create({
     data: {
@@ -83,6 +124,7 @@ export async function POST(request: NextRequest) {
       accountNumber,
       accountName: accountName.trim(),
       isDefault,
+      nickname: resolvedNickname,
     },
     select: {
       id: true,
@@ -91,9 +133,16 @@ export async function POST(request: NextRequest) {
       accountNumber: true,
       accountName: true,
       isDefault: true,
+      nickname: true,
       createdAt: true,
     },
   })
 
-  return NextResponse.json(bankAccount, { status: 201 })
+  return NextResponse.json(
+    { ...bankAccount, displayName: bankAccountDisplayName(bankAccount) },
+    { status: 201 },
+  )
 }
+
+export const GET = withRequestId(GETHandler)
+export const POST = withRequestId(POSTHandler)

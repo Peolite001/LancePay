@@ -28,7 +28,9 @@ async function getAuthenticatedUser(request: NextRequest) {
 }
 
 function normalizeOptionalString(value: unknown, maxLength: number): string | null | undefined {
-  if (value === undefined) return undefined
+  // An omitted optional field is treated as "no value" (null), not invalid input.
+  // `undefined` is reserved for values that fail validation (wrong type or too long).
+  if (value === undefined) return null
   if (value === null) return null
   if (typeof value !== 'string') return undefined
 

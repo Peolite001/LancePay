@@ -1,18 +1,16 @@
-import crypto from 'crypto'
+import { withRequestId } from '../../_lib/with-request-id'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyAuthToken } from '@/lib/auth'
-
-function buildETag(updatedAt: Date): string {
-  return `"${crypto.createHash('md5').update(updatedAt.toISOString()).digest('hex')}"`
-}
+import { createEntityEtag, ifMatchSatisfied } from '../../_lib/etag'
+import { checkResourceOwnership } from '../../_lib/access-control'
 
 function isValidIsoDate(value: string) {
   const date = new Date(value)
   return !Number.isNaN(date.getTime())
 }
 
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -29,10 +27,11 @@ export async function GET(
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
-  const invoice = await prisma.invoice.findFirst({
-    where: { id, userId: user.id },
+  const invoice = await prisma.invoice.findUnique({
+    where: { id },
     select: {
       id: true,
+      userId: true,
       invoiceNumber: true,
       clientEmail: true,
       clientName: true,
@@ -52,14 +51,31 @@ export async function GET(
     return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
   }
 
-  const etag = buildETag(invoice.updatedAt)
-  return NextResponse.json(
-    { ...invoice, amount: Number(invoice.amount) },
-    { headers: { ETag: etag } },
-  )
+  const accessCheck = checkResourceOwnership(invoice.userId, user.id)
+  if (accessCheck) return accessCheck
+
+  const etag = createEntityEtag(invoice.id, invoice.updatedAt)
+  const response = NextResponse.json({
+    invoice: {
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientName: invoice.clientName,
+      clientEmail: invoice.clientEmail,
+      description: invoice.description,
+      amount: Number(invoice.amount),
+      currency: invoice.currency,
+      status: invoice.status,
+      paymentLink: invoice.paymentLink,
+      dueDate: invoice.dueDate,
+      paidAt: invoice.paidAt,
+      createdAt: invoice.createdAt,
+    },
+  })
+  response.headers.set('ETag', etag)
+  return response
 }
 
-export async function PATCH(
+async function PATCHHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -76,33 +92,35 @@ export async function PATCH(
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
-  const ownedInvoice = await prisma.invoice.findFirst({
-    where: { id, userId: requester.id },
-    select: { id: true, status: true, updatedAt: true },
+  const ifMatchHeader = request.headers.get('if-match')
+  if (!ifMatchHeader) {
+    return NextResponse.json({ error: 'If-Match header is required' }, { status: 428 })
+  }
+  const wildcardMatch = ifMatchHeader.trim() === '*'
+  if (wildcardMatch && requester.role.toLowerCase() !== 'admin') {
+    return NextResponse.json({ error: 'Wildcard If-Match is admin only' }, { status: 403 })
+  }
+
+  const ownedInvoice = await prisma.invoice.findUnique({
+    where: { id },
+    select: { id: true, userId: true, status: true, updatedAt: true },
   })
 
   if (!ownedInvoice) {
-    const existingInvoice = await prisma.invoice.findUnique({
-      where: { id },
-      select: { id: true },
-    })
-
-    if (existingInvoice) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
     return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
   }
+
+  const accessCheck = checkResourceOwnership(ownedInvoice.userId, requester.id)
+  if (accessCheck) return accessCheck
 
   if (ownedInvoice.status !== 'pending') {
     return NextResponse.json({ error: 'Only pending invoices can be edited' }, { status: 422 })
   }
 
-  const ifMatch = request.headers.get('if-match')
-  if (ifMatch) {
-    const currentETag = buildETag(ownedInvoice.updatedAt)
-    if (ifMatch !== currentETag) {
-      return NextResponse.json({ error: 'Precondition Failed: ETag mismatch' }, { status: 412 })
+  if (!wildcardMatch) {
+    const currentEtag = createEntityEtag(ownedInvoice.id, ownedInvoice.updatedAt)
+    if (!ifMatchSatisfied(ifMatchHeader, currentEtag)) {
+      return NextResponse.json({ error: 'ETag mismatch' }, { status: 412 })
     }
   }
 
@@ -177,3 +195,6 @@ export async function PATCH(
 
   return NextResponse.json({ ...updatedInvoice, amount: Number(updatedInvoice.amount) })
 }
+
+export const GET = withRequestId(GETHandler)
+export const PATCH = withRequestId(PATCHHandler)
