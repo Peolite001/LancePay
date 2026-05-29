@@ -12,6 +12,7 @@ import {
   preconditionFailed,
 } from '../../_shared/error'
 import { createHash } from 'crypto'
+import { invalidateDashboardCache } from '../../../_shared/cache'
 
 function generateETag(id: string, description: string, updatedAt: Date): string {
   const hash = createHash('sha256')
