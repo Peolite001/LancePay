@@ -1108,6 +1108,7 @@ model CollectiveWallet {
   signers   WalletSigner[]
   proposals MultisigProposal[]
   emergencyRecoveryRequests EmergencyRecoveryRequest[]
+  emergencyRecoveries       EmergencyRecovery[]
 
   @@index([stellarAddress])
 }
