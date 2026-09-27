@@ -11,11 +11,11 @@ const errorResponse = (code: string, msg: string, data: any, status: number) => 
  */
 async function POSTHandler(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
     const auth = await requireScope(request, 'routes-b:read')
-    const invoiceId = params.id
+    const invoiceId = (await params).
 
     // Verify invoice exists and belongs to user
     const invoice = await prisma.invoice.findFirst({

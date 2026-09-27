@@ -15,7 +15,7 @@ export interface AnchorSessionStatus {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
     // 1. Authenticate the caller
@@ -27,7 +27,7 @@ export async function GET(
       )
     }
 
-    const { id } = params
+    const {} = await params
 
     // 2. Find the anchor session
     // SELECT only safe fields — explicitly exclude jwtToken

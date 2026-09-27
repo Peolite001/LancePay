@@ -10,7 +10,7 @@ const previewSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
     // Auth Check
@@ -39,7 +39,7 @@ export async function POST(
 
     // Fetch Template & Ownership Check
     const template = await prisma.emailTemplate.findUnique({
-      where: { id: params.id },
+      where: { id: (await params). },
     });
 
     if (!template) {
