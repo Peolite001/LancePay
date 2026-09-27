@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import Handlebars from 'handlebars'; 
-import prisma from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/auth'; // Adjust based on your auth implementation
+import { prisma } from '@/lib/db';
+import { verifyAuthToken } from '@/lib/auth';
 
 const previewSchema = z.object({
   sampleData: z.record(z.any()).default({}),
