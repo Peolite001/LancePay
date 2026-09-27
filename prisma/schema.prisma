@@ -8,97 +8,114 @@ datasource db {
 }
 
 model User {
-  id                         String                      @id @default(uuid())
-  privyId                    String                      @unique
-  email                      String                      @unique
-  role                       String                      @default("freelancer")
-  name                       String?
-  phone                      String?
-  avatarUrl                  String?                     @db.VarChar(512)
-  referralCode               String?                     @unique
-  referredById               String?
-  createdAt                  DateTime                    @default(now())
-  updatedAt                  DateTime                    @updatedAt
-  backupCodes                String[]                    @default([])
-  twoFactorEnabled           Boolean                     @default(false)
-  twoFactorSecret            String?
-  taxPercentage              Float                       @default(0)
-  timezone                   String?
-  recoveryPhone              String?
-  recoveryPhoneVerified      Boolean                     @default(false)
-  virtualAccount             VirtualAccount?
-  wallet                     Wallet?
-  bankAccounts               BankAccount[]
-  contacts                   Contact[]
-  invoices                   Invoice[]
-  clientInvoices             Invoice[]                   @relation("ClientInvoices")
-  paymentMethods             PaymentMethod[]
-  transactions               Transaction[]
-  reminderSettings           ReminderSettings?
-  autoSwapRule               AutoSwapRule?
-  automationRules            AutomationRule[]
-  referredBy                 User?                       @relation("UserReferrals", fields: [referredById], references: [id])
-  referrals                  User[]                      @relation("UserReferrals")
-  referralEarnings           ReferralEarning[]           @relation("ReferrerEarnings")
-  earningsFromMe             ReferralEarning[]           @relation("ReferredUserEarnings")
-  paymentAdvances            PaymentAdvance[]
-  apiKeys                    ApiKey[]
-  brandingSettings           BrandingSettings?
-  bankFeedSyncs              BankFeedSync[]
-  plaidAccounts              PlaidAccount[]
-  webhooks                   UserWebhook[]
-  userBadges                 UserBadge[]
-  auditEvents                AuditEvent[]
-  savingsGoals               SavingsGoal[]
-  incomeVerifications        IncomeVerification[]
-  payoutBatches              PayoutBatch[]
-  manualPayments             ManualPayment[]             @relation("ManualPaymentVerifier")
-  collaborations             InvoiceCollaborator[]       @relation("SubContractorCollaborations")
-  trustScore                 UserTrustScore?
-  walletSigners              WalletSigner[]
-  multisigProposals          MultisigProposal[]          @relation("MultisigProposer")
-  proposalSignatures         ProposalSignature[]
-  withdrawalTransactions     WithdrawalTransaction[]
-  anchorSessions             AnchorSession[]
-  expenses                   Expense[]
-  subscriptions              Subscription[]
-  notifications              Notification[]
-  tags                       Tag[]
-  timeEntries                TimeEntry[]
-  sessions                   UserSession[]
-  sanctionsScreening         SanctionsScreening?
-  deletionRequests           AccountDeletionRequest[]
-  kycApplication             KycApplication?
-  sourceOfFundsDeclaration   SourceOfFundsDeclaration?
-  kycDocuments               KycDocument[]
-  teamMemberships            TeamMember[]
-  ownedTeamMembers           TeamMember[]                @relation("TeamOwner")
-  whitelistAddresses         WhitelistAddress[]
-  clientNotes                ClientNote[]
-  clientNoteClients          ClientNote[]                @relation("ClientNotes")
-  savedFilters               SavedFilter[]
-  snippets                   Snippet[]
-  digestEmailSettings        DigestEmailSettings?
-  loginNotificationSettings  LoginNotificationSettings?
+  id               String   @id @default(uuid())
+  privyId          String   @unique
+  email            String   @unique
+  role             String   @default("freelancer")
+  name             String?
+  phone            String?
+  avatarUrl        String?  @db.VarChar(512)
+  referralCode     String?  @unique
+  referredById     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  backupCodes      String[] @default([])
+  twoFactorEnabled Boolean  @default(false)
+  twoFactorSecret  String?
+  taxPercentage    Float    @default(0)
+  teamSeatLimit    Int      @default(5)
+  timezone         String?
+  homeCurrency     String   @default("NGN") @db.VarChar(8)
+  recoveryPhone         String?
+  recoveryPhoneVerified Boolean  @default(false)
+  virtualAccount         VirtualAccount?
+  wallet                 Wallet?
+  bankAccounts           BankAccount[]
+  contacts               Contact[]
+  invoices               Invoice[]
+  clientInvoices         Invoice[]             @relation("ClientInvoices")
+  paymentMethods         PaymentMethod[]
+  transactions           Transaction[]
+  reminderSettings       ReminderSettings?
+  autoSwapRule           AutoSwapRule?
+  automationRules        AutomationRule[]
+  referredBy             User?                 @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals              User[]                @relation("UserReferrals")
+  referralEarnings       ReferralEarning[]     @relation("ReferrerEarnings")
+  earningsFromMe         ReferralEarning[]     @relation("ReferredUserEarnings")
+  paymentAdvances        PaymentAdvance[]
+  apiKeys                ApiKey[]
+  brandingSettings       BrandingSettings?
+  bankFeedSyncs          BankFeedSync[]
+  plaidAccounts          PlaidAccount[]
+  webhooks               UserWebhook[]
+  userBadges             UserBadge[]
+  badgeRevocations       UserBadgeRevocation[] @relation("BadgeRevocationSubject")
+  badgeRevocationsIssued UserBadgeRevocation[] @relation("BadgeRevocationActor")
+  auditEvents            AuditEvent[]
+  savingsGoals           SavingsGoal[]
+  incomeVerifications    IncomeVerification[]
+  sanctionsAppeals       SanctionsAppeal[]
+  watchlistRemovals      SecurityWatchlistRemovalAudit[]
+  payoutBatches          PayoutBatch[]
+  manualPayments         ManualPayment[]       @relation("ManualPaymentVerifier")
+  collaborations         InvoiceCollaborator[] @relation("SubContractorCollaborations")
+  trustScore             UserTrustScore?
+  walletSigners          WalletSigner[]
+  multisigProposals      MultisigProposal[]    @relation("MultisigProposer")
+  proposalSignatures     ProposalSignature[]
+  emergencyRecoveriesInitiated EmergencyRecovery[]          @relation("EmergencyRecoveryInitiator")
+  emergencyRecoveryApprovals   EmergencyRecoveryApproval[]  @relation("EmergencyRecoveryApprover")
+  structuringFlags             StructuringFlag[]            @relation("StructuringFlagSubject")
+  structuringFlagsDismissed    StructuringFlag[]            @relation("StructuringFlagDismisser")
+  structuringFlagsEscalated    StructuringFlag[]            @relation("StructuringFlagEscalator")
+  withdrawalTransactions WithdrawalTransaction[]
+  anchorSessions         AnchorSession[]
+  expenses              Expense[]
+  subscriptions         Subscription[]
+  notifications         Notification[]
+  tags                  Tag[]
+  timeEntries             TimeEntry[]
+  sessions                UserSession[]
+    sanctionsScreening      SanctionsScreening?
+    deletionRequests        AccountDeletionRequest[]
+    kycApplication          KycApplication?
+    sourceOfFundsDeclaration SourceOfFundsDeclaration?
+    kycDocuments            KycDocument[]
+    teamMemberships         TeamMember[]
+    ownedTeamMembers        TeamMember[] @relation("TeamOwner")
+    whitelistAddresses      WhitelistAddress[]
+  clientNotes             ClientNote[]
+  clientNoteClients       ClientNote[]    @relation("ClientNotes")
+  savedFilters            SavedFilter[]
+  snippets                Snippet[]
+  digestEmailSettings     DigestEmailSettings?
+  loginNotificationSettings LoginNotificationSettings?
   recoveryPhoneVerifications RecoveryPhoneVerification[]
-  refundOverrides            RefundOverride[]
-  projects                   Project[]
-  taxRates                   TaxRate[]
-  products                   Product[]
-  balanceThresholdAlerts     BalanceThresholdAlert[]
-  automations                Automation[]
-  libraryAttachments         LibraryAttachment[]
-  invoiceAttachments         InvoiceAttachment[]
-  creditNotes                CreditNote[]
-  paymentPlans               PaymentPlan[]
-  discounts                  Discount[]
-  refunds                    Refund[]
-  quotes                     Quote[]
-  invoiceTemplates           InvoiceTemplate[]
-  portalSessionsIssued       ClientPortalSession[]       @relation("PortalSessionOwner")
-  portalSessionsAsClient     ClientPortalSession[]       @relation("PortalSessionClient")
+  refundOverrides         RefundOverride[]
+  projects                Project[]
+  taxRates                TaxRate[]
+  products                Product[]
+  balanceThresholdAlerts  BalanceThresholdAlert[]
+  journalEntries          JournalEntry[]
+  automations             Automation[]
+  libraryAttachments      LibraryAttachment[]
+  invoiceAttachments      InvoiceAttachment[]
+  creditNotes             CreditNote[]
+  paymentPlans            PaymentPlan[]
+  discounts               Discount[]
+  refunds                 Refund[]
+  quotes                  Quote[]
+  invoiceTemplates        InvoiceTemplate[]
+  portalSessionsIssued    ClientPortalSession[] @relation("PortalSessionOwner")
+  portalSessionsAsClient  ClientPortalSession[] @relation("PortalSessionClient")
   emergencyRecoveryRequests  EmergencyRecoveryRequest[]  @relation("EmergencyRecoveryRequester")
   emergencyRecoveryApprovals EmergencyRecoveryApproval[]
+  ledgerDriftFindings         LedgerDriftFinding[]
+  driftCorrectionProposals   LedgerDriftCorrectionProposal[] @relation("DriftCorrectionProposer")
+  bankStatementLines         BankStatementLine[]
+  manualPaymentsReconciled   ManualPayment[] @relation("ManualPaymentReconciler")
+  invoiceFxLocks             InvoiceFxLock[]
 }
 
 model KycApplication {
@@ -127,23 +144,26 @@ model KycApplication {
 }
 
 model KycDocument {
-  id           String   @id @default(uuid())
-  userId       String
-  documentType String   @db.VarChar(40)
-  status       String   @default("uploaded") @db.VarChar(20)
-  fileUrl      String   @db.VarChar(512)
-  fileName     String?  @db.VarChar(200)
-  fileSize     Int?
-  mimeType     String?  @db.VarChar(80)
-  notes        String?  @db.Text
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String    @id @default(uuid())
+  userId        String
+  documentType  String    @db.VarChar(40)
+  status        String    @default("uploaded") @db.VarChar(20)
+  fileUrl       String    @db.VarChar(512)
+  fileName      String?   @db.VarChar(200)
+  fileSize      Int?
+  mimeType      String?   @db.VarChar(80)
+  notes         String?   @db.Text
+  ocrConfidence Decimal?  @db.Decimal(5, 4)
+  ocrReviewedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
   @@index([documentType])
+  @@index([ocrConfidence, ocrReviewedAt])
 }
 
 model SourceOfFundsDeclaration {
@@ -182,7 +202,48 @@ model Wallet {
   address   String   @unique
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user          User                 @relation(fields: [userId], references: [id])
+  driftFindings LedgerDriftFinding[]
+}
+
+model LedgerDriftFinding {
+  id             String    @id @default(uuid())
+  userId         String
+  walletId       String
+  currency       String    @default("USDC") @db.VarChar(12)
+  ledgerBalance  Decimal   @db.Decimal(18, 7)
+  onChainBalance Decimal   @db.Decimal(18, 7)
+  driftAmount    Decimal   @db.Decimal(18, 7)
+  tolerance      Decimal   @db.Decimal(18, 7)
+  status         String    @default("open") @db.VarChar(20)
+  detectedAt     DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  correctionProposals LedgerDriftCorrectionProposal[]
+
+  @@index([userId, currency])
+  @@index([status, detectedAt])
+}
+
+model LedgerDriftCorrectionProposal {
+  id             String   @id @default(uuid())
+  driftFindingId String
+  proposedById   String
+  amount         Decimal  @db.Decimal(18, 7)
+  currency       String   @db.VarChar(12)
+  reason         String   @db.Text
+  status         String   @default("pending") @db.VarChar(20)
+  createdAt      DateTime @default(now())
+  reviewedAt     DateTime?
+
+  driftFinding LedgerDriftFinding @relation(fields: [driftFindingId], references: [id], onDelete: Restrict)
+  proposedBy   User               @relation("DriftCorrectionProposer", fields: [proposedById], references: [id], onDelete: Restrict)
+
+  @@index([driftFindingId, status])
+  @@index([proposedById])
+  @@index([status, createdAt])
 }
 
 model BankAccount {
@@ -305,34 +366,41 @@ model Invoice {
   escrowContractId        String?               @unique
   escrowReleaseConditions String?
 
-  escrowReleasedAt   DateTime?
-  escrowDisputedAt   DateTime?
-  escrowEvents       EscrowEvent[]
-  invoiceTags        InvoiceTag[]
-  timeEntries        TimeEntry[]
-  lienActive         Boolean          @default(false)
-  advances           PaymentAdvance[]
-  auditEvents        AuditEvent[]
-  refundOverrides    RefundOverride[]
-  isConfidential     Boolean          @default(false)
-  encryptedPayload   String?          @db.Text
-  decryptionSalt     String?
-  messages           InvoiceMessage[]
-  manualPayments     ManualPayment[]
-  cancelledAt        DateTime?
-  cancellationReason String?
-  doNotAutoCancel    Boolean          @default(false)
+  escrowReleasedAt        DateTime?
+  escrowDisputedAt        DateTime?
+  escrowEvents            EscrowEvent[]
+  invoiceTags             InvoiceTag[]
+  timeEntries             TimeEntry[]
+  lienActive              Boolean               @default(false)
+  advances                PaymentAdvance[]
+  auditEvents             AuditEvent[]
+  refundOverrides         RefundOverride[]
+  isConfidential          Boolean               @default(false)
+  encryptedPayload        String?               @db.Text
+  decryptionSalt          String?
+  messages                InvoiceMessage[]
+  manualPayments          ManualPayment[]
+  fxLocks                 InvoiceFxLock[]
+  expenseReimbursements   ExpenseReimbursementMatch[]
+  cancelledAt             DateTime?
+  cancellationReason      String?
+  doNotAutoCancel         Boolean               @default(false)
 
-  subscriptionId String?
-  subscription   Subscription?       @relation(fields: [subscriptionId], references: [id])
-  attachments    InvoiceAttachment[]
-  lineItems      InvoiceLineItem[]
-  creditNotes    CreditNote[]
-  paymentPlan    PaymentPlan?
-  taxLines       InvoiceTaxLine[]
-  quote          Quote?
-  refunds        Refund[]
-  publicLinks    InvoicePublicLink[]
+  subscriptionId          String?
+  subscription            Subscription?         @relation(fields: [subscriptionId], references: [id])
+  attachments             InvoiceAttachment[]
+  lineItems               InvoiceLineItem[]
+  creditNotes             CreditNote[]
+  paymentPlan             PaymentPlan?
+  taxLines                InvoiceTaxLine[]
+  quote                   Quote?
+  refunds                 Refund[]
+  publicLinks             InvoicePublicLink[]
+
+  @@index([userId])
+  @@index([clientEmail])
+  creditNoteApplications  CreditNoteApplication[]
+  discountRedemptions     DiscountRedemption[]
 }
 
 model Subscription {
@@ -418,7 +486,11 @@ model Transaction {
   autoSwapTriggered Boolean   @default(false)
   error             String?
   externalId        String?   @unique
+  idempotencyKey  String?   @unique
   virtualAccountId  String?
+  reconciliationStatus      String    @default("pending") @db.VarChar(20)
+  reconciliationReason      String?   @db.VarChar(30)
+  reconciliationAttemptedAt DateTime?
 
   user           User            @relation(fields: [userId], references: [id])
   invoice        Invoice?        @relation(fields: [invoiceId], references: [id])
@@ -428,6 +500,24 @@ model Transaction {
   @@index([status])
   @@index([type])
   @@index([bankAccountId])
+  @@index([reconciliationStatus, reconciliationAttemptedAt])
+}
+
+model JournalEntry {
+  id            String   @id @default(uuid())
+  userId        String
+  debitAccount  String   @db.VarChar(100)
+  creditAccount String   @db.VarChar(100)
+  amount        Decimal  @db.Decimal(18, 6)
+  currency      String   @db.VarChar(8)
+  description   String?  @db.Text
+  date          DateTime
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([currency])
 }
 
 model ReferralEarning {
@@ -438,6 +528,8 @@ model ReferralEarning {
   amountUsdc     Decimal  @db.Decimal(18, 6)
   platformFee    Decimal  @db.Decimal(18, 6)
   status         String   @default("earned")
+  clawbackReason String?
+  clawbackAt     DateTime?
   createdAt      DateTime @default(now())
 
   referrer     User @relation("ReferrerEarnings", fields: [referrerId], references: [id], onDelete: Cascade)
@@ -449,15 +541,16 @@ model ReferralEarning {
 }
 
 model ApiKey {
-  id         String    @id @default(uuid())
-  userId     String
-  name       String
-  keyHint    String
-  hashedKey  String    @unique
-  isActive   Boolean   @default(true)
-  lastUsedAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id           String    @id @default(uuid())
+  userId       String
+  name         String
+  keyHint      String
+  hashedKey    String    @unique
+  isActive     Boolean   @default(true)
+  deactivatesAt DateTime?
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -574,14 +667,19 @@ model EscrowEvent {
 }
 
 model BrandingSettings {
-  id           String   @id @default(uuid())
-  userId       String   @unique
-  logoUrl      String?
-  primaryColor String   @default("#000000")
-  footerText   String?
-  signatureUrl String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  logoUrl                String?
+  primaryColor           String    @default("#000000")
+  footerText             String?
+  signatureUrl           String?
+  customDomain           String?   @unique @db.VarChar(253)
+  domainVerifiedAt       DateTime?
+  senderDomain           String    @default("lancepay.com") @db.VarChar(253)
+  domainRevokedAt        DateTime?
+  domainRevocationReason String?   @db.VarChar(500)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -730,14 +828,15 @@ model BadgeDefinition {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
 
-  userBadges UserBadge[]
+  userBadges  UserBadge[]
+  revocations UserBadgeRevocation[]
 }
 
 model UserBadge {
   id            String   @id @default(uuid())
   userId        String
   badgeId       String
-  stellarTxHash String   @db.VarChar(255)
+  stellarTxHash String?  @db.VarChar(255)
   issuedAt      DateTime @default(now())
 
   user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -746,6 +845,27 @@ model UserBadge {
   @@unique([userId, badgeId])
   @@index([userId])
   @@index([badgeId])
+}
+
+model UserBadgeRevocation {
+  id            String   @id @default(uuid())
+  userBadgeId   String
+  userId        String
+  badgeId       String
+  stellarTxHash String?  @db.VarChar(255)
+  issuedAt      DateTime
+  trigger       String   @db.VarChar(50)
+  reason        String   @db.VarChar(500)
+  revokedById   String?
+  revokedAt     DateTime @default(now())
+
+  user      User            @relation("BadgeRevocationSubject", fields: [userId], references: [id], onDelete: Cascade)
+  badge     BadgeDefinition @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  revokedBy User?           @relation("BadgeRevocationActor", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, badgeId])
+  @@index([revokedById])
+  @@index([revokedAt])
 }
 
 model IncomeVerification {
@@ -789,16 +909,37 @@ model SecurityWatchlist {
   @@index([value])
 }
 
+model SecurityWatchlistRemovalAudit {
+  id             String   @id @default(uuid())
+  watchlistId    String
+  type           String   @db.VarChar(20)
+  value          String   @db.VarChar(255)
+  additionReason String   @db.Text
+  removalReason  String   @db.Text
+  removedById    String
+  removedAt      DateTime @default(now())
+
+  removedBy User @relation(fields: [removedById], references: [id], onDelete: Restrict)
+
+  @@index([watchlistId])
+  @@index([value])
+  @@index([removedById])
+  @@index([removedAt])
+}
+
 model InvoiceCollaborator {
   id              String    @id @default(uuid())
   invoiceId       String
   subContractorId String
+  role            String    @default("viewer") @db.VarChar(20)
   sharePercentage Decimal   @db.Decimal(5, 2)
   payoutStatus    String    @default("pending") @db.VarChar(20)
   internalTxId    String?   @db.VarChar(255)
   paidAt          DateTime?
   paymentSource   String? // 'payment' | 'escrow' | 'advance'
   createdAt       DateTime  @default(now())
+  role            String    @default("viewer") @db.VarChar(20)
+  updatedAt       DateTime  @default(now()) @updatedAt
 
   invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   subContractor User    @relation("SubContractorCollaborations", fields: [subContractorId], references: [id], onDelete: Cascade)
@@ -841,36 +982,80 @@ model ManualPayment {
   status        String    @default("pending")
   verifiedBy    String?
   verifiedAt    DateTime?
+  reconciledAt        DateTime?
+  reconciledBy        String?
+  bankStatementLineId String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  invoice  Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  verifier User?   @relation("ManualPaymentVerifier", fields: [verifiedBy], references: [id])
+  invoice           Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  verifier          User?              @relation("ManualPaymentVerifier", fields: [verifiedBy], references: [id])
+  reconciler        User?              @relation("ManualPaymentReconciler", fields: [reconciledBy], references: [id])
+  bankStatementLine BankStatementLine? @relation(fields: [bankStatementLineId], references: [id])
 
   @@index([invoiceId])
   @@index([status])
   @@index([verifiedBy])
+  @@index([reconciledBy])
+}
+
+/// One row of an imported bank statement. A line can be matched to at most
+/// one ManualPayment (ManualPayment.bankStatementLineId is unique), which is
+/// the audit trail for manual-payment reconciliation.
+model BankStatementLine {
+  id              String   @id @default(uuid())
+  userId          String
+  transactionDate DateTime @db.Date
+  amount          Decimal  @db.Decimal(15, 2)
+  currency        String   @default("NGN") @db.VarChar(8)
+  description     String?  @db.VarChar(255)
+  reference       String?  @db.VarChar(100)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manualPayment ManualPayment?
+
+  @@index([userId, transactionDate])
 }
 
 model Expense {
   id          String   @id @default(uuid())
-  userId      String
-  category    String   @db.VarChar(50)
-  description String   @db.VarChar(255)
-  amount      Decimal  @db.Decimal(18, 6)
-  currency    String   @default("USDC") @db.VarChar(10)
-  receiptUrl  String?  @db.VarChar(512)
-  notes       String?  @db.Text
-  expenseDate DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  userId       String
+  category     String   @db.VarChar(50)
+  description  String   @db.VarChar(255)
+  amount       Decimal  @db.Decimal(18, 6)
+  currency     String   @default("USDC") @db.VarChar(10)
+  receiptUrl   String?  @db.VarChar(512)
+  notes        String?  @db.Text
+  expenseDate  DateTime
+  projectId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project              Project?                   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  reimbursementMatch   ExpenseReimbursementMatch?
 
   @@index([userId])
   @@index([category])
   @@index([expenseDate])
   @@index([createdAt])
+  @@index([projectId])
+}
+
+/// Links an expense to the invoice that bills it back to the client. An
+/// expense is reimbursed by at most one invoice.
+model ExpenseReimbursementMatch {
+  id        String   @id @default(uuid())
+  expenseId String   @unique
+  invoiceId String
+  createdAt DateTime @default(now())
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
 }
 
 model WithdrawalTransaction {
@@ -948,28 +1133,49 @@ model WalletSigner {
 }
 
 model MultisigProposal {
-  id                 String    @id @default(uuid())
-  walletId           String
-  proposerId         String
-  destinationAddress String    @db.VarChar(255)
-  amountUsdc         Decimal   @db.Decimal(18, 6)
-  memo               String?   @db.Text
-  status             String    @default("pending") @db.VarChar(20)
-  expiresAt          DateTime
-  executedAt         DateTime?
-  executionStartedAt DateTime?
-  stellarTxHash      String?   @db.VarChar(255)
-  lastError          String?   @db.Text
-  createdAt          DateTime  @default(now())
+  id                  String    @id @default(uuid())
+  walletId            String
+  proposerId          String
+  destinationAddress  String    @db.VarChar(255)
+  amountUsdc          Decimal   @db.Decimal(18, 6)
+  memo                String?   @db.Text
+  status              String    @default("pending") @db.VarChar(20)
+  expiresAt           DateTime
+  executedAt          DateTime?
+  executionStartedAt  DateTime?
+  stellarTxHash       String?   @db.VarChar(255)
+  lastError           String?   @db.Text
+  createdAt           DateTime  @default(now())
 
-  wallet     CollectiveWallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  proposer   User                @relation("MultisigProposer", fields: [proposerId], references: [id], onDelete: Cascade)
+  wallet    CollectiveWallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  proposer  User                @relation("MultisigProposer", fields: [proposerId], references: [id], onDelete: Cascade)
   signatures ProposalSignature[]
+  broadcast  MultisigBroadcast?
 
   @@index([walletId])
   @@index([proposerId])
   @@index([status])
   @@index([expiresAt])
+}
+
+model MultisigBroadcast {
+  id          String    @id @default(uuid())
+  proposalId  String    @unique
+  txHash      String?   @db.VarChar(255)
+  network     String    @default("stellar") @db.VarChar(50)
+  // pending   = submitted to network, waiting for inclusion
+  // confirmed = finality reached (≥ REQUIRED_CONFIRMATIONS ledger closes)
+  // failed    = network rejected or transaction dropped
+  status      String    @default("pending") @db.VarChar(20)
+  broadcastAt DateTime  @default(now())
+  confirmedAt DateTime?
+  failureReason String? @db.Text
+
+  proposal MultisigProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+  @@index([status])
+  @@index([txHash])
 }
 
 model ProposalSignature {
@@ -984,6 +1190,118 @@ model ProposalSignature {
   @@unique([proposalId, signerId])
   @@index([proposalId])
   @@index([signerId])
+}
+
+// ── Emergency signer recovery ─────────────────────────────────────────────────
+// Represents an admin-initiated recovery flow for a CollectiveWallet that has
+// lost quorum.  A minimum of MIN_APPROVALS admin approvals are required before
+// the request can be acted on; a single admin cannot unilaterally execute it.
+
+model EmergencyRecovery {
+  id            String    @id @default(uuid())
+  walletId      String
+  // User who initiated the recovery request (must be admin)
+  initiatorId   String
+  justification String    @db.Text
+  // pending   = waiting for required admin approvals
+  // approved  = min approvals reached, ready to execute
+  // executed  = new signer configuration applied
+  // rejected  = denied by admins or cancelled
+  status        String    @default("pending") @db.VarChar(20)
+  // Snapshot of the broken quorum state at initiation time
+  signerCountAtRequest   Int
+  thresholdAtRequest     Int
+  activeSignerCount      Int
+  // Timeline
+  createdAt     DateTime  @default(now())
+  resolvedAt    DateTime?
+  expiresAt     DateTime
+
+  wallet    CollectiveWallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  initiator User                      @relation("EmergencyRecoveryInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  approvals EmergencyRecoveryApproval[]
+
+  @@index([walletId])
+  @@index([initiatorId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model EmergencyRecoveryApproval {
+  id         String   @id @default(uuid())
+  recoveryId String
+  approverId String
+  // approve | reject
+  decision   String   @db.VarChar(10)
+  note       String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  recovery EmergencyRecovery @relation(fields: [recoveryId], references: [id], onDelete: Cascade)
+  approver User              @relation("EmergencyRecoveryApprover", fields: [approverId], references: [id], onDelete: Cascade)
+
+  @@unique([recoveryId, approverId])
+  @@index([recoveryId])
+  @@index([approverId])
+}
+
+// ── Compliance: structuring detection ────────────────────────────────────────
+// A StructuringFlag is raised automatically (or manually) when a user's
+// transaction pattern matches structuring heuristics.  A compliance reviewer
+// can dismiss it as a false positive (with a documented reason) or escalate it
+// to a formal case.  Dismissal is blocked once the flag has been escalated.
+
+model StructuringFlag {
+  id          String    @id @default(uuid())
+  userId      String
+  // open      = awaiting review
+  // dismissed = reviewed and closed as false positive
+  // escalated = promoted to a formal compliance case
+  status      String    @default("open") @db.VarChar(20)
+  // Human-readable summary of why the flag was raised
+  reason      String    @db.Text
+  // Amount window that triggered the flag (informational)
+  periodStart DateTime?
+  periodEnd   DateTime?
+  totalAmount Decimal?  @db.Decimal(18, 6)
+  // Dismissal fields — populated when status = 'dismissed'
+  dismissedById   String?
+  dismissalReason String?  @db.Text
+  dismissedAt     DateTime?
+  // Escalation fields — populated when status = 'escalated'
+  escalatedById   String?
+  escalatedAt     DateTime?
+  caseReference   String?  @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User  @relation("StructuringFlagSubject",  fields: [userId],        references: [id], onDelete: Cascade)
+  dismissedBy User? @relation("StructuringFlagDismisser", fields: [dismissedById], references: [id])
+  escalatedBy User? @relation("StructuringFlagEscalator", fields: [escalatedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ── Distributed job lock ──────────────────────────────────────────────────────
+// One row per named lock key.  Acquisition uses an atomic conditional upsert so
+// two concurrent callers cannot both believe they hold the lock.  A crashed
+// holder is automatically evicted once expiresAt passes.
+
+model DistributedLock {
+  // The logical lock name, e.g. "cancel-overdue-invoices"
+  key         String   @id @db.VarChar(255)
+  // Opaque token the holder must supply to release the lock
+  token       String   @db.VarChar(255)
+  // Identity of the instance that holds the lock (hostname / pod name)
+  holder      String?  @db.VarChar(255)
+  acquiredAt  DateTime @default(now())
+  expiresAt   DateTime
+  // Monotonically increasing counter for optimistic checks
+  version     Int      @default(1)
+
+  @@index([expiresAt])
 }
 
 model PayoutItem {
@@ -1108,10 +1426,28 @@ model SanctionsScreening {
   updatedAt  DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appeals SanctionsAppeal[]
 
   @@index([userId])
   @@index([status])
   @@index([screenedAt])
+}
+
+model SanctionsAppeal {
+  id          String   @id @default(uuid())
+  screeningId String
+  userId      String
+  reason      String   @db.Text
+  status      String   @default("pending") @db.VarChar(20)
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+
+  screening SanctionsScreening @relation(fields: [screeningId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([screeningId])
+  @@index([userId])
+  @@index([status])
 }
 
 model ClientNote {
@@ -1269,8 +1605,38 @@ model FxRateSnapshot {
   capturedAt   DateTime
   createdAt    DateTime @default(now())
 
+  invoiceFxLocks InvoiceFxLock[]
+
   @@index([fromCurrency, toCurrency, capturedAt])
   @@index([capturedAt])
+}
+
+/// An exchange rate frozen against an invoice. The rate itself lives on the
+/// referenced FxRateSnapshot (inverted when the snapshot quotes the opposite
+/// direction); sourceAmount/lockedAmount record what the rate produced, since
+/// Invoice.amount can change after the lock. Locks are append-only: the latest
+/// row for an invoice is its current lock, and it stops being honored at
+/// expiresAt.
+model InvoiceFxLock {
+  id               String   @id @default(uuid())
+  invoiceId        String
+  fxRateSnapshotId String
+  inverted         Boolean  @default(false)
+  sourceAmount     Decimal  @db.Decimal(10, 2)
+  sourceCurrency   String   @db.VarChar(8)
+  lockedAmount     Decimal  @db.Decimal(15, 2)
+  lockedCurrency   String   @db.VarChar(8)
+  lockedBy         String
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  invoice        Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  fxRateSnapshot FxRateSnapshot @relation(fields: [fxRateSnapshotId], references: [id])
+  locker         User           @relation(fields: [lockedBy], references: [id])
+
+  @@index([invoiceId, createdAt])
+  @@index([fxRateSnapshotId])
+  @@index([lockedBy])
 }
 
 /// A client project grouping invoices and time entries.
@@ -1286,8 +1652,8 @@ model Project {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timeEntries TimeEntry[]
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses Expense[]
 
   @@index([userId])
   @@index([status])
@@ -1298,26 +1664,23 @@ model Project {
 /// applied at the time. A rate may reference a parent rate to model compound
 /// tax (a tax charged on top of an already-taxed amount).
 model TaxRate {
-  id            String    @id @default(uuid())
-  userId        String
-  name          String    @db.VarChar(100)
-  description   String?   @db.VarChar(300)
-  jurisdiction  String    @db.VarChar(100) // e.g. "US-CA", "GB", "NG-LA"
-  rate          Decimal   @db.Decimal(6, 4) // e.g. 0.1000 for 10%
-  effectiveFrom DateTime  @db.Date // inclusive lower bound of the active window
-  effectiveTo   DateTime? @db.Date // exclusive upper bound; null means open-ended
-  parentRateId  String? // parent rate applied before this one (compound tax)
-  isDefault     Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String   @id @default(uuid())
+  userId      String
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(300)
+  rate        Decimal  @db.Decimal(6, 4) // e.g. 0.1000 for 10%
+  isDefault   Boolean  @default(false)
+  effectiveFrom DateTime @default(now()) // rate applies to invoices dated on or after this
+  effectiveTo   DateTime?                // rate stops applying to invoices dated on or after this (null = open-ended)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   parentRate TaxRate?  @relation("CompoundTax", fields: [parentRateId], references: [id], onDelete: SetNull)
   childRates TaxRate[] @relation("CompoundTax")
 
   @@index([userId])
-  @@index([userId, jurisdiction, effectiveFrom])
-  @@index([parentRateId])
+  @@index([userId, name, effectiveFrom])
 }
 
 /// A member that the owning user has invited to collaborate on their account.
@@ -1350,12 +1713,14 @@ model WhitelistAddress {
   address   String   @db.VarChar(70)
   network   String   @default("stellar") @db.VarChar(20) // "stellar" | "bank"
   createdAt DateTime @default(now())
+  activatesAt DateTime // Timestamp when this address becomes usable for withdrawals (after cooldown period)
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, address])
   @@index([userId])
+  @@index([activatesAt])
 }
 
 model BalanceThresholdAlert {
@@ -1386,9 +1751,30 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priceVersions ProductPriceVersion[]
 
   @@index([userId])
+  @@index([isActive])
+}
+
+/// An immutable, effective-dated price for a Product. New prices are appended as
+/// new versions rather than mutating the product, so invoices issued in the past
+/// keep referencing the price that was active on their issue date.
+model ProductPriceVersion {
+  id            String   @id @default(uuid())
+  productId     String
+  priceUsdc     Decimal  @db.Decimal(18, 6)
+  /// The moment this price takes effect. A version scheduled in the future is
+  /// stored with isActive=false until its effective date arrives.
+  effectiveDate DateTime @default(now())
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([productId, effectiveDate])
   @@index([isActive])
 }
 
@@ -1475,23 +1861,42 @@ model InvoiceLineItem {
 }
 
 model CreditNote {
-  id           String   @id @default(uuid())
-  userId       String
-  invoiceId    String
-  creditNumber String   @unique
-  amount       Decimal  @db.Decimal(10, 2)
-  currency     String   @default("USD")
-  reason       String
-  status       String   @default("issued")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(uuid())
+  userId        String
+  invoiceId     String
+  creditNumber  String   @unique
+  amount        Decimal  @db.Decimal(10, 2)
+  /// Running total already allocated to invoices. The remaining balance is
+  /// amount - appliedAmount; a CHECK constraint keeps it within [0, amount].
+  appliedAmount Decimal  @default(0) @db.Decimal(10, 2)
+  currency      String   @default("USD")
+  reason        String
+  status        String   @default("issued")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  user    User    @relation(fields: [userId], references: [id])
-  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  user         User                    @relation(fields: [userId], references: [id])
+  invoice      Invoice                 @relation(fields: [invoiceId], references: [id])
+  applications CreditNoteApplication[]
 
   @@index([userId])
   @@index([invoiceId])
   @@index([status])
+}
+
+/// One allocation of a credit note's balance against an invoice.
+model CreditNoteApplication {
+  id           String   @id @default(uuid())
+  creditNoteId String
+  invoiceId    String
+  amount       Decimal  @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id])
+  invoice    Invoice    @relation(fields: [invoiceId], references: [id])
+
+  @@index([creditNoteId])
+  @@index([invoiceId])
 }
 
 model PaymentPlan {
@@ -1559,11 +1964,31 @@ model Discount {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user              User                 @relation(fields: [userId], references: [id])
+  redemptionRecords DiscountRedemption[]
 
   @@unique([userId, code])
   @@index([userId])
   @@index([active])
+}
+
+/// A single application of a discount code to an invoice. Only rows with
+/// status "succeeded" count as redemptions; "pending", "failed" and
+/// "rejected" record attempts that never consumed the code.
+model DiscountRedemption {
+  id         String   @id @default(uuid())
+  discountId String
+  invoiceId  String
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  discount Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  invoice  Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([discountId, invoiceId])
+  @@index([discountId, status])
+  @@index([invoiceId])
 }
 
 model Refund {
@@ -1645,11 +2070,33 @@ model Quote {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id])
-  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
+  invoice   Invoice?        @relation(fields: [invoiceId], references: [id])
+  lineItems QuoteLineItem[]
 
   @@index([userId])
   @@index([status])
+}
+
+/// A priced line on a quote. productId is a plain reference (no foreign key,
+/// like InvoiceTaxLine.taxRateId) so a product deleted after the quote was
+/// issued is still detectable instead of being nulled out or blocking the
+/// product's deletion.
+model QuoteLineItem {
+  id          String   @id @default(uuid())
+  quoteId     String
+  productId   String?
+  description String   @db.VarChar(500)
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@index([productId])
 }
 
 model InvoiceTemplate {
@@ -1668,4 +2115,19 @@ model InvoiceTemplate {
 
   @@unique([userId, name])
   @@index([userId])
+}
+
+model DistributedJobLock {
+  id                  String    @id @default(uuid())
+  name                String    @unique @db.VarChar(191)
+  tokenHash           String?   @db.VarChar(64)
+  previousTokenHashes String[]  @default([])
+  holderId            String?   @db.VarChar(191)
+  acquiredAt          DateTime?
+  expiresAt           DateTime?
+  releasedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([expiresAt])
 }
