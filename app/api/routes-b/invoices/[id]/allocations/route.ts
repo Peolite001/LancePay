@@ -20,7 +20,7 @@ async function GETHandler(
 ) {
   try {
     const auth = await requireScope(request, 'routes-b:read')
-    const invoiceId = (await params).
+    const invoiceId = (await Promise.resolve(params)).id
 
     // Verify invoice exists and belongs to user
     const invoice = await prisma.invoice.findFirst({
@@ -62,7 +62,7 @@ async function POSTHandler(
 ) {
   try {
     const auth = await requireScope(request, 'routes-b:read')
-    const invoiceId = (await params).
+    const invoiceId = (await Promise.resolve(params)).id
 
     let body: unknown
     try {

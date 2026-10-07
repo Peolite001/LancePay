@@ -25,12 +25,12 @@ export async function GET(
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const apiToken = await prisma.apiToken.findFirst({
-      where: { id: (await params)., userId: user.id },
+      where: { id: (await Promise.resolve(params)).id, userId: user.id },
     })
     if (!apiToken) return NextResponse.json({ error: 'Token not found' }, { status: 404 })
 
     const entries = await prisma.tokenIpAllowlist.findMany({
-      where: { tokenId: (await params). },
+      where: { tokenId: (await Promise.resolve(params)).id },
       orderBy: { createdAt: 'asc' },
       select: { id: true, cidr: true, label: true, createdAt: true },
     })
@@ -57,7 +57,7 @@ export async function POST(
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const apiToken = await prisma.apiToken.findFirst({
-      where: { id: (await params)., userId: user.id },
+      where: { id: (await Promise.resolve(params)).id, userId: user.id },
     })
     if (!apiToken) return NextResponse.json({ error: 'Token not found' }, { status: 404 })
 
@@ -69,7 +69,7 @@ export async function POST(
     }
 
     const existing = await prisma.tokenIpAllowlist.findFirst({
-      where: { tokenId: (await params)., cidr: cidr.trim() },
+      where: { tokenId: (await Promise.resolve(params)).id, cidr: cidr.trim() },
     })
     if (existing) {
       return NextResponse.json({ error: 'CIDR already in allowlist' }, { status: 409 })
@@ -77,7 +77,7 @@ export async function POST(
 
     const entry = await prisma.tokenIpAllowlist.create({
       data: {
-        tokenId: (await params).,
+        tokenId: (await Promise.resolve(params)).id,
         cidr: cidr.trim(),
         label: label?.trim() ?? null,
       },

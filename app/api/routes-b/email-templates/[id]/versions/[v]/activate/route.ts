@@ -28,7 +28,7 @@ export async function POST(
 
     // 2. Verify template existence and ownership
     const template = await prisma.emailTemplate.findUnique({
-      where: { id: (await params). },
+      where: { id: (await Promise.resolve(params)).id },
     });
 
     if (!template) {
@@ -47,10 +47,10 @@ export async function POST(
 
     // 3. Verify the target version exists and belongs to this template
     const targetVersion = await prisma.emailTemplateVersion.findUnique({
-      where: { id: (await params). },
+      where: { id: (await Promise.resolve(params)).v },
     });
 
-    if (!targetVersion || targetVersion.templateId !== (await params).) {
+    if (!targetVersion || targetVersion.templateId !== (await Promise.resolve(params)).id) {
       return NextResponse.json(
         { error: 'Not Found', message: 'Email template version not found.' },
         { status: 404 }
@@ -60,8 +60,8 @@ export async function POST(
     // 4. Activate the version
     // NOTE: Adjust 'activeVersionId' to match your exact Prisma schema field name
     const updatedTemplate = await prisma.emailTemplate.update({
-      where: { id: (await params). },
-      data: { activeVersionId: (await params). }, 
+      where: { id: (await Promise.resolve(params)).id },
+      data: { activeVersionId: (await Promise.resolve(params)).v }, 
     });
 
     return NextResponse.json({ data: updatedTemplate }, { status: 200 });

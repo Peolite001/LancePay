@@ -18,7 +18,7 @@ export async function GET(
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const client = await prisma.client.findFirst({
-      where: { id: (await params)., userId: user.id },
+      where: { id: (await Promise.resolve(params)).id, userId: user.id },
     })
     if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
@@ -28,12 +28,12 @@ export async function GET(
 
     const [feedback, total] = await Promise.all([
       prisma.clientFeedback.findMany({
-        where: { clientId: (await params). },
+        where: { clientId: (await Promise.resolve(params)).id },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.clientFeedback.count({ where: { clientId: (await params). } }),
+      prisma.clientFeedback.count({ where: { clientId: (await Promise.resolve(params)).id } }),
     ])
 
     return NextResponse.json({ feedback, total, page, limit })
@@ -58,7 +58,7 @@ export async function POST(
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const client = await prisma.client.findFirst({
-      where: { id: (await params)., userId: user.id },
+      where: { id: (await Promise.resolve(params)).id, userId: user.id },
     })
     if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
@@ -74,7 +74,7 @@ export async function POST(
 
     const entry = await prisma.clientFeedback.create({
       data: {
-        clientId: (await params).,
+        clientId: (await Promise.resolve(params)).id,
         userId: user.id,
         rating,
         comment: comment?.trim() ?? null,

@@ -35,7 +35,7 @@ export async function GET(
     }
 
     const template = await prisma.emailTemplate.findUnique({
-      where: { id: (await params). },
+      where: { id: (await Promise.resolve(params)).id },
     });
 
     if (!template) {
@@ -54,7 +54,7 @@ export async function GET(
     }
 
     const versions = await prisma.emailTemplateVersion.findMany({
-      where: { templateId: (await params). },
+      where: { templateId: (await Promise.resolve(params)).id },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -108,7 +108,7 @@ export async function POST(
     }
 
     const template = await prisma.emailTemplate.findUnique({
-      where: { id: (await params). },
+      where: { id: (await Promise.resolve(params)).id },
     });
 
     if (!template) {
@@ -127,7 +127,7 @@ export async function POST(
 
     const newVersion = await prisma.emailTemplateVersion.create({
       data: {
-        templateId: (await params).,
+        templateId: (await Promise.resolve(params)).id,
         subject: validation.data.subject,
         content: validation.data.content,
         versionNote: validation.data.versionNote,

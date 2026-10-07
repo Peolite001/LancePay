@@ -18,17 +18,17 @@ export async function DELETE(
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const client = await prisma.client.findFirst({
-      where: { id: (await params)., userId: user.id },
+      where: { id: (await Promise.resolve(params)).id, userId: user.id },
     })
     if (!client) return NextResponse.json({ error: 'Client not found' }, { status: 404 })
 
     const contact = await prisma.clientContact.findFirst({
-      where: { id: (await params)., clientId: (await params). },
+      where: { id: (await Promise.resolve(params)).contactId, clientId: (await Promise.resolve(params)).id },
       select: { id: true },
     })
     if (!contact) return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
 
-    await prisma.clientContact.delete({ where: { id: (await params). } })
+    await prisma.clientContact.delete({ where: { id: (await Promise.resolve(params)).contactId } })
 
     return new NextResponse(null, { status: 204 })
   } catch (error) {
