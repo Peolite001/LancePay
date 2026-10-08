@@ -16,6 +16,7 @@ export default function WithdrawalsPage() {
   const [selectedBank, setSelectedBank] = useState("");
   const [balance, setBalance] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingBank, setIsAddingBank] = useState(false);
 
   const { getAccessToken } = usePrivy();
 
@@ -49,22 +50,28 @@ export default function WithdrawalsPage() {
   }, []);
 
   const addBankAccount = async () => {
+    if (isAddingBank) return;
     const token = await getAccessToken();
     if (!token) return;
-    const res = await fetch("/api/bank-accounts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(newBank),
-    });
-    if (res.ok) {
-      const bank = await res.json();
-      setBankAccounts([bank, ...bankAccounts]);
-      setShowAddBank(false);
-      setNewBank({ bankCode: "", accountNumber: "" });
-      setSelectedBank(bank.id);
+    setIsAddingBank(true);
+    try {
+      const res = await fetch("/api/bank-accounts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(newBank),
+      });
+      if (res.ok) {
+        const bank = await res.json();
+        setBankAccounts([bank, ...bankAccounts]);
+        setShowAddBank(false);
+        setNewBank({ bankCode: "", accountNumber: "" });
+        setSelectedBank(bank.id);
+      }
+    } finally {
+      setIsAddingBank(false);
     }
   };
 
@@ -197,10 +204,10 @@ export default function WithdrawalsPage() {
             />
             <button
               onClick={addBankAccount}
-              disabled={!newBank.bankCode || newBank.accountNumber.length !== 10}
-              className="w-full py-3 bg-brand-black text-white rounded-lg disabled:opacity-50"
+              disabled={!newBank.bankCode || newBank.accountNumber.length !== 10 || isAddingBank}
+              className="w-full py-3 bg-brand-black text-white rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Add Bank
+              {isAddingBank ? "Adding Bank..." : "Add Bank"}
             </button>
           </div>
         )}

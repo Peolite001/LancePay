@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import crypto, { createHmac } from "crypto";
 import { prisma } from "@/lib/db";
 
 const AUDIT_SECRET =
@@ -20,6 +20,18 @@ export function generateSignature(
   return createHmac("sha256", AUDIT_SECRET).update(payload).digest("hex");
 }
 
+/**
+ * Verifies an audit log event signature using constant-time comparison.
+ *
+ * Why constant-time comparison matters here:
+ * Even though this verification helper may be latent or currently unused in public user paths,
+ * standard string equality (`===`) short-circuits on the first mismatched byte, leaking timing
+ * information observable over network requests. An attacker could exploit such timing differences
+ * to iteratively forge valid HMAC signatures byte-by-byte. Using `crypto.timingSafeEqual`
+ * ensures comparisons execute in constant time regardless of where mismatches occur.
+ *
+ * We also guard against length mismatches since `timingSafeEqual` throws if buffer lengths differ.
+ */
 export function verifySignature(
   invoiceId: string,
   eventType: string,
@@ -27,8 +39,19 @@ export function verifySignature(
   metadata: AuditMetadata | null,
   signature: string,
 ): boolean {
+  if (!signature || typeof signature !== "string") {
+    return false;
+  }
+
   const expected = generateSignature(invoiceId, eventType, timestamp, metadata);
-  return expected === signature;
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const suppliedBuf = Buffer.from(signature, "utf8");
+
+  if (expectedBuf.length !== suppliedBuf.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expectedBuf, suppliedBuf);
 }
 
 export async function logAuditEvent(
