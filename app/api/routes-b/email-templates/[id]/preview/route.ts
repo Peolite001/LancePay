@@ -39,7 +39,7 @@ export async function POST(
 
     // Fetch Template & Ownership Check
     const template = await prisma.emailTemplate.findUnique({
-      where: { id: (await params). },
+      where: { id: (await params).id },
     });
 
     if (!template) {
