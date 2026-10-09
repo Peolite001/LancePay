@@ -118,4 +118,40 @@ describe('POST /api/webhooks/offramp', () => {
     expect(update).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
   })
+
+  it.each(['completed', 'failed', 'reversed'])(
+    'no-ops and does not update when withdrawal is already in terminal state: %s',
+    async (terminalStatus) => {
+      findFirst.mockResolvedValue({ id: 'wd_1', status: terminalStatus })
+      const { POST } = await import('@/app/api/webhooks/offramp/route')
+      const res = await POST(
+        makeRequest({ reference: 'wd_1', status: 'completed', reason: 'Replayed update' })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.status).toBe(terminalStatus)
+      expect(body.ignored).toBe(true)
+      expect(update).not.toHaveBeenCalled()
+      expect(sendEmail).not.toHaveBeenCalled()
+    }
+  )
+
+  it('catches downstream exceptions, logs the error, and returns 500', async () => {
+    findFirst.mockRejectedValue(new Error('Database connection failed'))
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { POST } = await import('@/app/api/webhooks/offramp/route')
+    const res = await POST(makeRequest({ reference: 'wd_1', status: 'completed' }))
+
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toBe('Webhook processing error')
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Webhook processing failed for raw payload:'),
+      expect.any(String),
+      expect.any(Error)
+    )
+    consoleSpy.mockRestore()
+  })
 })
+
