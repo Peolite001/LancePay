@@ -166,14 +166,12 @@ export async function POST(request: NextRequest) {
       update: {
         jwtToken: sep24Result.jwtToken, // refresh token
         expiresAt, // reset expiry
-        updatedAt: new Date(),
       },
       select: {
         id: true,
         anchorId: true,
         expiresAt: true,
         createdAt: true,
-        updatedAt: true,
         // NEVER select jwtToken in response
       },
     })
@@ -187,7 +185,6 @@ export async function POST(request: NextRequest) {
         interactiveUrl: sep24Result.interactiveUrl,
         expiresAt: anchorSession.expiresAt?.toISOString() ?? null,
         createdAt: anchorSession.createdAt.toISOString(),
-        updatedAt: anchorSession.updatedAt.toISOString(),
       },
       { status: 201 }
     )

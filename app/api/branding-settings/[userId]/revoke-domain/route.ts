@@ -35,10 +35,9 @@ export async function POST(
 
     const revokedAt = new Date()
     const result = await prisma.brandingSettings.updateMany({
-      where: { userId, customDomain: { not: null }, domainVerifiedAt: { not: null } },
+      where: { userId, customDomain: { not: null } },
       data: {
         customDomain: null,
-        domainVerifiedAt: null,
         senderDomain: DEFAULT_SENDER_DOMAIN,
         domainRevokedAt: revokedAt,
         domainRevocationReason: reason.trim(),

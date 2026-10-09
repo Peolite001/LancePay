@@ -10,7 +10,6 @@ export interface AnchorSessionStatus {
   status: 'active' | 'expired' | 'terminated'
   expiresAt: string | null
   createdAt: string
-  updatedAt: string
 }
 
 export async function GET(
@@ -19,15 +18,28 @@ export async function GET(
 ) {
   try {
     // 1. Authenticate the caller
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    const authToken = request.headers.get('authorization')?.replace('Bearer ', '')
+    const claims = await verifyAuthToken(authToken || '')
+
+    if (!claims) {
       return NextResponse.json(
         { error: 'Unauthorized', message: 'Authentication required' },
         { status: 401 }
       )
     }
 
-    const {} = await params
+    const user = await prisma.user.findUnique({
+      where: { privyId: claims.userId },
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'User not found' },
+        { status: 401 }
+      )
+    }
+
+    const { id } = await params
 
     // 2. Find the anchor session
     // SELECT only safe fields — explicitly exclude jwtToken
@@ -38,7 +50,6 @@ export async function GET(
         userId: true,
         expiresAt: true,
         createdAt: true,
-        updatedAt: true,
       },
     })
 
@@ -51,7 +62,7 @@ export async function GET(
     }
 
     // 4. Ownership check — only session owner may view status
-    if (anchorSession.userId !== session.user.id) {
+    if (anchorSession.userId !== user.id) {
       return NextResponse.json(
         { error: 'Forbidden', message: 'You do not own this anchor session' },
         { status: 403 }
@@ -68,7 +79,6 @@ export async function GET(
         status: 'expired',
         expiresAt: anchorSession.expiresAt.toISOString(),
         createdAt: anchorSession.createdAt.toISOString(),
-        updatedAt: anchorSession.updatedAt.toISOString(),
       }, { status: 200 })
     }
 
@@ -78,7 +88,6 @@ export async function GET(
       status: 'active',
       expiresAt: anchorSession.expiresAt?.toISOString() ?? null,
       createdAt: anchorSession.createdAt.toISOString(),
-      updatedAt: anchorSession.updatedAt.toISOString(),
     }, { status: 200 })
   } catch (error) {
     console.error('GET /api/anchor-sessions/[id]/status error:', error)
