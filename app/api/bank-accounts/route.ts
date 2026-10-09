@@ -5,7 +5,8 @@ import { verifyNigerianBankAccount } from '@/lib/bank-verification'
 import { verifyTwoFactorForRequest } from '@/lib/two-factor'
 import { addBankAccountSchema } from '@/lib/validations'
 import { twoFactorLimiter, buildRateLimitResponse } from '@/lib/rate-limit'
-
+import { decrypt } from '@/lib/crypto'
+import speakeasy from 'speakeasy'
 const BANKS: Record<string, string> = {
   '044': 'Access Bank',
   '063': 'Access Bank (Diamond)',

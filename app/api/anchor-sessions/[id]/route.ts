@@ -29,7 +29,7 @@ export async function DELETE(
       )
     }
 
-    const {} = await params
+    const { id } = await params
 
     // 2. Find the anchor session
     const anchorSession = await prisma.anchorSession.findUnique({
@@ -65,7 +65,7 @@ export async function DELETE(
     const terminated = await prisma.anchorSession.update({
       where: { id },
       data: {
-        jwtToken: null, // invalidate token — stale clients cannot resume
+        jwtToken: '', // invalidate token — stale clients cannot resume
       },
     })
 
