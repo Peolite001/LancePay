@@ -38,9 +38,10 @@ export async function POST(
       where: { userId, customDomain: { not: null } },
       data: {
         customDomain: null,
-        senderDomain: DEFAULT_SENDER_DOMAIN,
-        domainRevokedAt: revokedAt,
-        domainRevocationReason: reason.trim(),
+        verificationToken: null,
+        verificationStatus: 'unverified',
+        verifiedAt: null,
+        verificationAttempts: 0,
       },
     })
     if (result.count === 0) {
